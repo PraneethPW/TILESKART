@@ -13,8 +13,29 @@ const app = express();
 const prisma = new PrismaClient();
 const port = Number(process.env.PORT ?? 4000);
 const jwtSecret = process.env.JWT_SECRET ?? "dev-only-tileskart-secret";
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  ...(process.env.FRONTEND_URLS?.split(",") ?? []),
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
+  "https://tileskart.vercel.app"
+]
+  .filter(Boolean)
+  .map((origin) => origin!.trim().replace(/\/$/, ""));
 
-app.use(cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:5173" }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true
+  })
+);
 app.use(express.json({ limit: "1mb" }));
 
 type AuthUser = { id: string; email: string; name: string; role: string };
